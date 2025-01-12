@@ -227,23 +227,26 @@ local function handleInVehicle()
     if heliCam then
         SetTimecycleModifier('heliGunCam')
         SetTimecycleModifierStrength(0.3)
-        local scaleform = lib.requestScaleformMovie('HELI_CAM')
+
         local cam = CreateCam('DEFAULT_SCRIPTED_FLY_CAMERA', true)
         AttachCamToEntity(cam, cache.vehicle, 0.0,0.0,-1.5, true)
         SetCamRot(cam, 0.0, 0.0, GetEntityHeading(cache.vehicle), 2)
         SetCamFov(cam, fov)
         RenderScriptCams(true, false, 0, true, false)
-        PushScaleformMovieFunction(scaleform, 'SET_CAM_LOGO')
-        PushScaleformMovieFunctionParameterInt(0) -- 0 for nothing, 1 for LSPD logo
-        PopScaleformMovieFunctionVoid()
+
+        local scaleform = qbx.newScaleform("HELI_CAM")
+        scaleform:MethodArgs('SET_CAM_LOGO', 0) -- 0 for nothing, 1 for LSPD logo
+
         lockedOnVehicle = nil
         while heliCam and not IsEntityDead(cache.ped) and cache.vehicle and isHeliHighEnough(cache.vehicle) do
             if IsControlJustPressed(0, toggleHeliCam) then -- Toggle Helicam
                 turnOffCam()
             end
+
             if IsControlJustPressed(0, toggleVision) then
                 changeVision()
             end
+
             local zoomValue = 0
             if lockedOnVehicle then
                 if DoesEntityExist(lockedOnVehicle) then
@@ -265,21 +268,24 @@ local function handleInVehicle()
                 vehicleDetected = getVehicleInView(cam)
                 vehicleLockState = DoesEntityExist(vehicleDetected) and VEHICLE_LOCK_STATE.scanning or VEHICLE_LOCK_STATE.dormant
             end
+
             handleZoom(cam)
             hideHudThisFrame()
-            PushScaleformMovieFunction(scaleform, 'SET_ALT_FOV_HEADING')
-            PushScaleformMovieFunctionParameterFloat(GetEntityCoords(cache.vehicle).z)
-            PushScaleformMovieFunctionParameterFloat(zoomValue)
-            PushScaleformMovieFunctionParameterFloat(GetCamRot(cam, 2).z)
-            PopScaleformMovieFunctionVoid()
-            DrawScaleformMovieFullscreen(scaleform, 255, 255, 255, 255, 0)
+
+            local entityCoords = GetEntityCoords(cache.vehicle)
+            local camRot = GetCamRot(cam, 2).z
+            scaleform:MethodArgs('SET_ALT_FOV_HEADING', entityCoords, zoomValue, camRot)
+
             Wait(0)
         end
+
         heliCam = false
         ClearTimecycleModifier()
         fov = (FOV_MAX + FOV_MIN) * 0.5 -- reset to starting zoom level
+
+        scaleform:Dispose()
+
         RenderScriptCams(false, false, 0, true, false) -- Return to gameplay camera
-        SetScaleformMovieAsNoLongerNeeded(scaleform) -- Cleanly release the scaleform
         DestroyCam(cam, false)
         SetNightvision(false)
         SetSeethrough(false)

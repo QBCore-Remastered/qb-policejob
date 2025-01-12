@@ -1,7 +1,7 @@
 local config = require 'config.client'.securityCameras
 local currentCamIndex = 0
 local createdCam = 0
-local currentScaleform = -1
+local currentScaleform = nil
 
 local function getCurrentTime()
     local hours = GetClockHours()
@@ -15,34 +15,23 @@ local function getCurrentTime()
     return tostring(hours .. ':' .. minutes)
 end
 
-local function createInstructionalScaleform(scaleform)
-    scaleform = lib.requestScaleformMovie(scaleform)
-    PushScaleformMovieFunction(scaleform, 'CLEAR_ALL')
-    PopScaleformMovieFunctionVoid()
+local function setupIntructionalScaleform()
+    if not currentScaleform then
+        return
+    end
 
-    PushScaleformMovieFunction(scaleform, 'SET_CLEAR_SPACE')
-    PushScaleformMovieFunctionParameterInt(200)
-    PopScaleformMovieFunctionVoid()
+    -- empty the scaleform
+    currentScaleform:Method('CLEAR_ALL')
+    currentScaleform:MethodArgs('SET_CLEAR_SPACE', { 200 })
 
-    PushScaleformMovieFunction(scaleform, 'SET_DATA_SLOT')
-    PushScaleformMovieFunctionParameterInt(1)
-    ScaleformMovieMethodAddParamPlayerNameString(GetControlInstructionalButton(1, 194, true))
-    BeginTextCommandScaleformString('STRING')
-    AddTextComponentScaleform(locale('info.close_camera'))
-    EndTextCommandScaleformString()
-    PopScaleformMovieFunctionVoid()
+    -- add the button
+    currentScaleform:MethodArgs('SET_DATA_SLOT', { 1, GetControlInstructionalButton(1, 177, true), 'Close Camera' })
 
-    PushScaleformMovieFunction(scaleform, 'DRAW_INSTRUCTIONAL_BUTTONS')
-    PopScaleformMovieFunctionVoid()
+    -- draw the buttons
+    currentScaleform:Method('DRAW_INSTRUCTIONAL_BUTTONS')
 
-    PushScaleformMovieFunction(scaleform, 'SET_BACKGROUND_COLOUR')
-    PushScaleformMovieFunctionParameterInt(0)
-    PushScaleformMovieFunctionParameterInt(0)
-    PushScaleformMovieFunctionParameterInt(0)
-    PushScaleformMovieFunctionParameterInt(80)
-    PopScaleformMovieFunctionVoid()
-
-    return scaleform
+    -- set the background colour
+    currentScaleform:MethodArgs("SET_BACKGROUND_COLOUR", { 0, 0, 0, 80 })
 end
 
 local function changeSecurityCamera(x, y, z, r)
@@ -51,9 +40,9 @@ local function changeSecurityCamera(x, y, z, r)
         createdCam = 0
     end
 
-    if currentScaleform ~= -1 then
-        SetScaleformMovieAsNoLongerNeeded(currentScaleform)
-        currentScaleform = -1
+    if currentScaleform then
+        currentScaleform:Dispose()
+        currentScaleform = nil
     end
 
     local cam = CreateCam('DEFAULT_SCRIPTED_CAMERA', true)
@@ -62,15 +51,22 @@ local function changeSecurityCamera(x, y, z, r)
     RenderScriptCams(true, false, 0, true, true)
     Wait(250)
     createdCam = cam
-    currentScaleform = createInstructionalScaleform('instructional_buttons')
+
+    currentScaleform = qbx.newScaleform('instructional_buttons') -- create the scaleform
+    setupIntructionalScaleform() -- setup the scaleform
+    currentScaleform:Draw(true) -- draw the scaleform
 end
 
 local function closeSecurityCamera()
     DestroyCam(createdCam, false)
     RenderScriptCams(false, false, 1, true, true)
     createdCam = 0
-    SetScaleformMovieAsNoLongerNeeded(currentScaleform)
-    currentScaleform = -1
+
+    if currentScaleform then
+        currentScaleform:Dispose()
+        currentScaleform = nil
+    end
+
     ClearTimecycleModifier()
     SetFocusEntity(cache.ped)
     if config.hideRadar then
@@ -139,12 +135,12 @@ RegisterNetEvent('police:client:SetCamera', function(key, isOnline)
     elseif type(key) == 'number' then
         config.cameras[key].isOnline = isOnline
     else
-        error('police:client:SetCamera did not receive the right type of key\nreceived type: ' .. type(key) .. '\nreceived value: ' .. key)
+        error('police:client:SetCamera did not receive the right type of key\nreceived type: ' ..
+        type(key) .. '\nreceived value: ' .. key)
     end
 end)
 
 local function listenForCamControls()
-    DrawScaleformMovieFullscreen(currentScaleform, 255, 255, 255, 255, 0)
     SetTimecycleModifier('scanline_cam_cheap')
     SetTimecycleModifierStrength(1.0)
 
@@ -199,7 +195,7 @@ end
 
 CreateThread(function()
     while true do
-        if createdCam == 0 or currentScaleform == -1 then
+        if createdCam == 0 or not currentScaleform then
             Wait(2000)
         else
             listenForCamControls()
