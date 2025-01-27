@@ -1,6 +1,7 @@
 local config = require 'config.shared'
 IsEscorted = false
 local dutyBlips = {}
+local isUsingXTPrison = GetResourceState('xt-prison'):find('start')
 
 local function CreateDutyBlips(playerId, playerLabel, playerJob, playerLocation)
     local ped = GetPlayerPed(playerId)
@@ -153,13 +154,15 @@ RegisterNetEvent('police:client:policeAlert', function(coords, text, camId)
     end
 end)
 
-RegisterNetEvent('police:client:SendToJail', function(time)
-    TriggerServerEvent('police:server:SetHandcuffStatus', false)
-    IsEscorted = false
-    ClearPedTasks(cache.ped)
-    DetachEntity(cache.ped, true, false)
-    TriggerEvent('prison:client:Enter', time)
-end)
+if not isUsingXTPrison then
+    RegisterNetEvent('police:client:SendToJail', function(time)
+        TriggerServerEvent('police:server:SetHandcuffStatus', false)
+        IsEscorted = false
+        ClearPedTasks(cache.ped)
+        DetachEntity(cache.ped, true, false)
+        TriggerEvent('prison:client:Enter', time)
+    end)
+end
 
 RegisterNetEvent('police:client:SendPoliceEmergencyAlert', function()
     TriggerServerEvent('police:server:policeAlert', locale('info.officer_down', QBX.PlayerData.charinfo.lastname, QBX.PlayerData.metadata.callsign))

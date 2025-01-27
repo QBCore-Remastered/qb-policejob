@@ -1,10 +1,11 @@
 local sharedConfig = require 'config.shared'
-Plates = {}
 local playerStatus = {}
 local casings = {}
 local bloodDrops = {}
 local fingerDrops = {}
 local updatingCops = false
+Plates = {}
+IsUsingXTPrison = GetResourceState('xt-prison'):find('start')
 
 ---@param player Player
 ---@param minGrade? integer
@@ -292,32 +293,34 @@ RegisterNetEvent('police:server:BillPlayer', function(targetSrc, price)
     exports.qbx_core:Notify(targetPlayer.PlayerData.source, locale('info.fine_received', price), 'inform')
 end)
 
-RegisterNetEvent('police:server:JailPlayer', function(targetSrc, time)
-    local src = source
-    if isTargetTooFar(src, targetSrc) then return end
+if not IsUsingXTPrison then
+    RegisterNetEvent('police:server:JailPlayer', function(targetSrc, time)
+        local src = source
+        if isTargetTooFar(src, targetSrc) then return end
 
-    local player = exports.qbx_core:GetPlayer(src)
-    if not player or player.PlayerData.job.type ~= 'leo' then return end
-    local targetPlayer = exports.qbx_core:GetPlayer(targetSrc)
-    if not targetPlayer then return end
+        local player = exports.qbx_core:GetPlayer(src)
+        if not player or player.PlayerData.job.type ~= 'leo' then return end
+        local targetPlayer = exports.qbx_core:GetPlayer(targetSrc)
+        if not targetPlayer then return end
 
-    local currentDate = os.date('*t')
-    if currentDate.day == 31 then
-        currentDate.day = 30
-    end
+        local currentDate = os.date('*t')
+        if currentDate.day == 31 then
+            currentDate.day = 30
+        end
 
-    targetPlayer.Functions.SetMetaData('injail', time)
-    targetPlayer.Functions.SetMetaData('criminalrecord', {
-        hasRecord = true,
-        date = currentDate
-    })
-    if GetResourceState('qbx_prison') == 'started' then
-        exports.qbx_prison:JailPlayer(targetPlayer.PlayerData.source, time)
-    else
-        TriggerClientEvent('police:client:SendToJail', targetPlayer.PlayerData.source, time)
-    end
-    exports.qbx_core:Notify(src, locale('info.sent_jail_for', time), 'inform')
-end)
+        targetPlayer.Functions.SetMetaData('injail', time)
+        targetPlayer.Functions.SetMetaData('criminalrecord', {
+            hasRecord = true,
+            date = currentDate
+        })
+        if GetResourceState('qbx_prison') == 'started' then
+            exports.qbx_prison:JailPlayer(targetPlayer.PlayerData.source, time)
+        else
+            TriggerClientEvent('police:client:SendToJail', targetPlayer.PlayerData.source, time)
+        end
+        exports.qbx_core:Notify(src, locale('info.sent_jail_for', time), 'inform')
+    end)
+end
 
 RegisterNetEvent('police:server:SetHandcuffStatus', function(isHandcuffed)
     local player = exports.qbx_core:GetPlayer(source)

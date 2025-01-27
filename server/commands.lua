@@ -131,7 +131,7 @@ lib.addCommand('callsign', {
         type = 'number',
         help = locale('info.callsign_name')
     }},
- }, function(source, args)
+}, function(source, args)
     local player = exports.qbx_core:GetPlayer(source)
     player.Functions.SetMetaData('callsign', args.callsign)
 end)
@@ -142,28 +142,30 @@ lib.addCommand('clearcasings', {help = locale('commands.clear_casign')}, functio
     TriggerClientEvent('evidence:client:ClearCasingsInArea', source)
 end)
 
-lib.addCommand('jail', {help = locale('commands.jail_player')}, function(source)
-    local player = exports.qbx_core:GetPlayer(source)
-    if not checkLeoAndOnDuty(player) then return end
-    TriggerClientEvent('police:client:JailPlayer', source)
-end)
+if not IsUsingXTPrison then
+    lib.addCommand('jail', {help = locale('commands.jail_player')}, function(source)
+        local player = exports.qbx_core:GetPlayer(source)
+        if not checkLeoAndOnDuty(player) then return end
+        TriggerClientEvent('police:client:JailPlayer', source)
+    end)
 
-lib.addCommand('unjail', {
-    help = locale('commands.unjail_player'),
-    params = {{
-        name = 'id',
-        type = 'playerId',
-        help = locale('info.player_id')
-    }}
-}, function(source, args)
-    local player = exports.qbx_core:GetPlayer(source)
-    if not checkLeoAndOnDuty(player) then return end
-    if GetResourceState('qbx_prison') == 'started' then
-        exports.qbx_prison:ReleasePlayer(args.id)
-    else
-        TriggerClientEvent('prison:client:UnjailPerson', args.id)
-    end
-end)
+    lib.addCommand('unjail', {
+        help = locale('commands.unjail_player'),
+        params = {{
+            name = 'id',
+            type = 'playerId',
+            help = locale('info.player_id')
+        }}
+    }, function(source, args)
+        local player = exports.qbx_core:GetPlayer(source)
+        if not checkLeoAndOnDuty(player) then return end
+        if GetResourceState('qbx_prison') == 'started' then
+            exports.qbx_prison:ReleasePlayer(args.id)
+        else
+            TriggerClientEvent('prison:client:UnjailPerson', args.id)
+        end
+    end)
+end
 
 lib.addCommand('clearblood', {help = locale('commands.clearblood')}, function(source)
     local player = exports.qbx_core:GetPlayer(source)
